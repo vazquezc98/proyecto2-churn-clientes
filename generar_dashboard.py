@@ -290,7 +290,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
 
   const layoutBase = {
-    margin: {t: 40, b: 40, l: 60, r: 20},
+    margin: {t: 50, b: 40, l: 60, r: 20},
     font: {family: "Segoe UI, sans-serif", size: 12, color: "#3a4a5a"},
     plot_bgcolor: "#ffffff",
     paper_bgcolor: "#ffffff",
@@ -305,7 +305,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       x: p1.x, y: p1.y, type: "bar",
       marker: {color: ["#ef553b", "#ef553b", "#ef553b"]},
       text: p1.y.map(v => v + "%"), textposition: "auto"
-    }], {...layoutBase, title: {text: "Tasa de Churn por Plan (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p1.y, 10) * 1.25]}}, {responsive: true});
+    }], {...layoutBase, title: {text: "Tasa de Churn por Plan (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p1.y, 10) * 1.25]}}, {responsive: true, displayModeBar: false});
 
     // 2. Churn por soporte
     const p2 = agruparTasa(subset, "soporte_tecnico_usado", ["No", "Sí"]);
@@ -313,7 +313,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       x: p2.x, y: p2.y, type: "bar",
       marker: {color: ["#00cc96", "#ef553b"]},
       text: p2.y.map(v => v + "%"), textposition: "auto"
-    }], {...layoutBase, title: {text: "Tasa de Churn por Soporte Técnico (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p2.y, 10) * 1.25]}}, {responsive: true});
+    }], {...layoutBase, title: {text: "Tasa de Churn por Soporte Técnico (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p2.y, 10) * 1.25]}}, {responsive: true, displayModeBar: false});
 
     // 3. Churn por antigüedad
     const p3 = agruparTasa(subset, "antigüedad_rango_calc", ["0-6", "7-12", "13-24", "25-48", "49+"]);
@@ -321,7 +321,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       x: p3.x, y: p3.y, type: "bar",
       marker: {color: "#ef553b"},
       text: p3.y.map(v => v + "%"), textposition: "auto"
-    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Antigüedad (meses)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p3.y, 10) * 1.25]}}, {responsive: true});
+    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Antigüedad (meses)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p3.y, 10) * 1.25]}}, {responsive: true, displayModeBar: false});
 
     // 4. Churn por costo
     const p4 = agruparTasa(subset, "costo_rango_calc", ["0-30", "31-50", "51-70", "71+"]);
@@ -329,7 +329,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       x: p4.x, y: p4.y, type: "bar",
       marker: {color: "#636efa"},
       text: p4.y.map(v => v + "%"), textposition: "auto"
-    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Costo Mensual", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p4.y, 10) * 1.25]}}, {responsive: true});
+    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Costo Mensual", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p4.y, 10) * 1.25]}}, {responsive: true, displayModeBar: false});
 
     // 5. Scatter antigüedad vs costo
     const no = subset.filter(d => d.cancelado_si_no === "No");
@@ -337,7 +337,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     Plotly.newPlot("g-scatter", [
       {x: no.map(d=>d.antigüedad_meses), y: no.map(d=>d.costo_mensual), mode: "markers", type: "scatter", name: "No canceló", marker: {color: "#00cc96", size: 8, opacity: 0.7}},
       {x: si.map(d=>d.antigüedad_meses), y: si.map(d=>d.costo_mensual), mode: "markers", type: "scatter", name: "Canceló", marker: {color: "#ef553b", size: 8, opacity: 0.85, symbol: "x"}}
-    ], {...layoutBase, title: {text: "Antigüedad vs Costo Mensual", x: 0.5}, xaxis: {title: "Antigüedad (meses)"}, yaxis: {title: "Costo mensual"}}, {responsive: true});
+    ], {...layoutBase, title: {text: "Antigüedad vs Costo Mensual", x: 0.5}, xaxis: {title: "Antigüedad (meses)"}, yaxis: {title: "Costo mensual"}}, {responsive: true, displayModeBar: false});
 
     // 6. Histograma costo por churn
     const histNo = no.map(d => d.costo_mensual);
@@ -345,7 +345,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     Plotly.newPlot("g-hist", [
       {x: histNo, type: "histogram", name: "No canceló", marker: {color: "#00cc96"}, opacity: 0.7, nbinsx: 20},
       {x: histSi, type: "histogram", name: "Canceló", marker: {color: "#ef553b"}, opacity: 0.85, nbinsx: 20}
-    ], {...layoutBase, title: {text: "Distribución de Costo Mensual por Estado de Churn", x: 0.5}, barmode: "overlay", xaxis: {title: "Costo mensual"}, yaxis: {title: "Frecuencia"}}, {responsive: true});
+    ], {...layoutBase, title: {text: "Distribución de Costo Mensual por Estado de Churn", x: 0.5}, barmode: "overlay", xaxis: {title: "Costo mensual"}, yaxis: {title: "Frecuencia"}}, {responsive: true, displayModeBar: false});
   }
 
   function actualizarTabla(subset){
