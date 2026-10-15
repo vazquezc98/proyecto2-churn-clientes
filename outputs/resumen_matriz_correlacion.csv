@@ -1,0 +1,5 @@
+,antigüedad_meses,costo_mensual,soporte_bin,cancelado_bin
+antigüedad_meses,1.0,0.031,-0.081,-0.126
+costo_mensual,0.031,1.0,-0.017,-0.059
+soporte_bin,-0.081,-0.017,1.0,0.059
+cancelado_bin,-0.126,-0.059,0.059,1.0

@@ -1,0 +1,4379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Customer Churn</title>
+
+<!-- Plotly.js -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<!-- jQuery + DataTables -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<style>
+  :root{
+    --primary:#1f77b4;
+    --danger:#ef553b;
+    --success:#00cc96;
+    --bg:#f7f9fc;
+    --card:#ffffff;
+    --text:#2b2b2b;
+  }
+  body{font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin:0; padding:24px;}
+  .header{background: linear-gradient(90deg, #1f4e79, #2980b9); color:#fff; padding:24px 32px; border-radius:12px; margin-bottom:24px; box-shadow:0 4px 12px rgba(0,0,0,.08);}
+  .header h1{margin:0 0 8px 0; font-size:26px;}
+  .header p{margin:0; opacity:.9; font-size:14px;}
+
+  /* KPI cards */
+  .kpi-grid{display:grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap:16px; margin-bottom:28px;}
+  .kpi-card{background: var(--card); border:1px solid #e3e8ee; border-radius:12px; padding:20px 16px; text-align:center; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .kpi-card .valor{font-size:28px; font-weight:700; margin:6px 0 2px 0;}
+  .kpi-card .etiqueta{font-size:13px; color:#5b6b7c; text-transform:uppercase; letter-spacing:.04em;}
+  .kpi-card .sub{font-size:12px; color:#8a97a5; margin-top:4px;}
+  .kpi-danger .valor{color: var(--danger);}
+  .kpi-success .valor{color: var(--success);}
+  .kpi-primary .valor{color: var(--primary);}
+
+  /* Filtros */
+  .filtros{background: var(--card); border:1px solid #e3e8ee; border-radius:12px; padding:20px; margin-bottom:24px; box-shadow:0 2px 8px rgba(0,0,0,.04); display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;}
+  .filtro{display:flex; flex-direction:column; gap:6px; min-width:160px;}
+  .filtro label{font-size:12px; font-weight:600; color:#4a5a6a; text-transform:uppercase; letter-spacing:.02em;}
+  .filtro select{padding:8px 10px; border:1px solid #c9d2dc; border-radius:8px; background:#fff; font-size:13px; cursor:pointer;}
+  .filtro select:focus{border-color: var(--primary); outline:none;}
+
+  /* Gráficos */
+  .graficos{display:grid; grid-template-columns: repeat(auto-fit,minmax(420px,1fr)); gap:24px; margin-bottom:28px;}
+  .grafico-card{background: var(--card); border:1px solid #e3e8ee; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.04);}
+  .grafico-card h3{margin:0 0 12px 0; font-size:16px; color:#3a4a5a;}
+
+  /* Tabla */
+  .tabla-card{background: var(--card); border:1px solid #e3e8ee; border-radius:12px; padding:0; box-shadow:0 2px 8px rgba(0,0,0,.04); overflow:hidden;}
+  .tabla-card .tabla-header{padding:16px 20px; border-bottom:1px solid #e3e8ee; display:flex; justify-content:space-between; align-items:center;}
+  .tabla-header h3{margin:0; font-size:16px; color:#3a4a5a;}
+  .tabla-header .badge{background:#eef4fb; color: var(--primary); border:1px solid #cde3f6; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600;}
+  table.dataTable.no-footer{border-collapse:collapse !important;}
+  table.dataTable thead th{background:#f1f5f9; color:#3a4a5a; font-weight:600; font-size:13px; padding:12px 10px; border-bottom:1px solid #e3e8ee;}
+  table.dataTable tbody td{padding:10px; font-size:13px; border-bottom:1px solid #f0f2f5;}
+  table.dataTable tbody tr:hover{background:#f7fafc;}
+  .dataTables_wrapper .dataTables_paginate .paginate_button.current{background: var(--primary) !important; border:1px solid var(--primary) !important; color:#fff !important;}
+  .dataTables_length, .dataTables_filter{margin:8px 0;}
+  .dataTables_length select, .dataTables_filter input{padding:6px 8px; border:1px solid #c9d2dc; border-radius:6px; font-size:13px;}
+
+  .muted{color:#6b7a8a; font-size:12px; margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Dashboard de Fuga de Clientes (Customer Churn)</h1>
+  <p>Análisis exploratorio y monitoreo de cancelaciones &mdash; 500 clientes registrados</p>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card kpi-primary">
+    <div class="etiqueta">Total de clientes</div>
+    <div class="valor">500</div>
+  </div>
+  <div class="kpi-card kpi-danger">
+    <div class="etiqueta">Cancelados (Churn)</div>
+    <div class="valor">29</div>
+    <div class="sub">Tasa de churn: <b>5.8%</b></div>
+  </div>
+  <div class="kpi-card kpi-success">
+    <div class="etiqueta">Activos</div>
+    <div class="valor">471</div>
+  </div>
+  <div class="kpi-card">
+    <div class="etiqueta">Antigüedad promedio</div>
+    <div class="valor">23.6 meses</div>
+  </div>
+  <div class="kpi-card">
+    <div class="etiqueta">Costo mensual promedio</div>
+    <div class="valor">39.98</div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filtros">
+  <div class="filtro">
+    <label>Plan</label>
+    <select id="filtro-plan">
+      <option value="Todos">Todos</option>
+      <option value="Básico">Básico</option>
+      <option value="Estándar">Estándar</option>
+      <option value="Premium">Premium</option>
+    </select>
+  </div>
+  <div class="filtro">
+    <label>Soporte técnico usado</label>
+    <select id="filtro-soporte">
+      <option value="Todos">Todos</option>
+      <option value="Sí">Sí</option>
+      <option value="No">No</option>
+    </select>
+  </div>
+  <div class="filtro">
+    <label>Rango de antigüedad (meses)</label>
+    <select id="filtro-antiguedad">
+      <option value="Todas">Todas</option>
+      <option value="0-6">0 - 6</option>
+      <option value="7-12">7 - 12</option>
+      <option value="13-24">13 - 24</option>
+      <option value="25-48">25 - 48</option>
+      <option value="49-120">49 +</option>
+    </select>
+  </div>
+  <div class="filtro">
+    <label>Rango de costo mensual</label>
+    <select id="filtro-costo">
+      <option value="Todas">Todas</option>
+      <option value="0-30">0 - 30</option>
+      <option value="31-50">31 - 50</option>
+      <option value="51-70">51 - 70</option>
+      <option value="71-200">71 +</option>
+    </select>
+  </div>
+  <p class="muted" style="margin:0 0 0 16px;">Los filtros se aplican a KPIs, gráficos y tabla al instante.</p>
+</div>
+
+<!-- Gráficos -->
+<div class="graficos">
+  <div class="grafico-card"><h3>Tasa de Churn por Plan (%)</h3><div id="g-plan"></div></div>
+  <div class="grafico-card"><h3>Tasa de Churn por Soporte Técnico (%)</h3><div id="g-soporte"></div></div>
+  <div class="grafico-card"><h3>Tasa de Churn por Antigüedad (%)</h3><div id="g-antiguedad"></div></div>
+  <div class="grafico-card"><h3>Tasa de Churn por Costo Mensual (%)</h3><div id="g-costo"></div></div>
+  <div class="grafico-card" style="grid-column: span 2;"><h3>Antigüedad vs Costo Mensual (color = ¿Canceló?)</h3><div id="g-scatter"></div></div>
+  <div class="grafico-card"><h3>Distribución de Costo Mensual por Churn</h3><div id="g-hist"></div></div>
+</div>
+
+<!-- Tabla -->
+<div class="tabla-card">
+  <div class="tabla-header">
+    <h3>Detalle de Clientes</h3>
+    <div class="badge" id="badge-filas">0 filas</div>
+  </div>
+  <table id="tabla-clientes" class="display" style="width:100%;">
+    <thead>
+      <tr>
+        <th>id_cliente</th>
+        <th>Antigüedad (meses)</th>
+        <th>Plan</th>
+        <th>Soporte técnico</th>
+        <th>Costo mensual</th>
+        <th>¿Canceló?</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<p class="muted">Generado automáticamente con Python, Plotly y DataTables. Archivo: dashboard_churn.html</p>
+
+<script>
+  const datos = [
+  {
+    "id_cliente": "C001",
+    "antigüedad_meses": 24,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.91,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C002",
+    "antigüedad_meses": 40,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 57.9,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C003",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C004",
+    "antigüedad_meses": 6,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.44,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C005",
+    "antigüedad_meses": 57,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.85,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C006",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 43.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C007",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 42.34,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C008",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C009",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 79.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C010",
+    "antigüedad_meses": 36,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C011",
+    "antigüedad_meses": 29,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.27,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C012",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C013",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C014",
+    "antigüedad_meses": 8,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C015",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 16.16,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C016",
+    "antigüedad_meses": 33,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.83,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C017",
+    "antigüedad_meses": 10,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.52,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C018",
+    "antigüedad_meses": 22,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.53,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C019",
+    "antigüedad_meses": 12,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.4,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C020",
+    "antigüedad_meses": 56,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 17.19,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C021",
+    "antigüedad_meses": 14,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.9,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C022",
+    "antigüedad_meses": 23,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.63,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C023",
+    "antigüedad_meses": 52,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C024",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.57,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C025",
+    "antigüedad_meses": 35,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 33.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C026",
+    "antigüedad_meses": 25,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.81,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C027",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.59,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C028",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 53.56,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C029",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.38,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C030",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 52.71,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C031",
+    "antigüedad_meses": 118,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C032",
+    "antigüedad_meses": 46,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 85.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C033",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.09,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C034",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 52.45,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C035",
+    "antigüedad_meses": 31,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.05,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C036",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C037",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.35,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C038",
+    "antigüedad_meses": 35,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 42.21,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C039",
+    "antigüedad_meses": 4,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.58,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C040",
+    "antigüedad_meses": 10,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C041",
+    "antigüedad_meses": 31,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.99,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C042",
+    "antigüedad_meses": 19,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C043",
+    "antigüedad_meses": 55,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C044",
+    "antigüedad_meses": 25,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.58,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C045",
+    "antigüedad_meses": 71,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 46.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C046",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 72.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C047",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 32.5,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C048",
+    "antigüedad_meses": 84,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.41,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C049",
+    "antigüedad_meses": 14,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C050",
+    "antigüedad_meses": 8,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 79.59,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C051",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.56,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C052",
+    "antigüedad_meses": 62,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.18,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C053",
+    "antigüedad_meses": 6,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 87.46,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C054",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 48.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C055",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.8,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C056",
+    "antigüedad_meses": 61,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C057",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.43,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C058",
+    "antigüedad_meses": 13,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 70.06,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C059",
+    "antigüedad_meses": 22,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C060",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.84,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C061",
+    "antigüedad_meses": 14,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.69,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C062",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.18,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C063",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C064",
+    "antigüedad_meses": 23,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C065",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 33.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C066",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 31.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C067",
+    "antigüedad_meses": 19,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.18,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C068",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 21.49,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C069",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C070",
+    "antigüedad_meses": 12,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 73.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C071",
+    "antigüedad_meses": 25,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C072",
+    "antigüedad_meses": 15,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 42.24,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C073",
+    "antigüedad_meses": 25,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 53.04,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C074",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.54,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C075",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C076",
+    "antigüedad_meses": 31,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C077",
+    "antigüedad_meses": 10,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.89,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C078",
+    "antigüedad_meses": 104,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 36.05,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C079",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C080",
+    "antigüedad_meses": 11,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 30.4,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C081",
+    "antigüedad_meses": 101,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.05,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C082",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 42.09,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C083",
+    "antigüedad_meses": 19,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C084",
+    "antigüedad_meses": 17,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C085",
+    "antigüedad_meses": 30,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C086",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.65,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C087",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.8,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C088",
+    "antigüedad_meses": 23,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C089",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C090",
+    "antigüedad_meses": 29,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.45,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C091",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 53.86,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C092",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C093",
+    "antigüedad_meses": 14,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C094",
+    "antigüedad_meses": 74,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C095",
+    "antigüedad_meses": 34,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C096",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 79.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C097",
+    "antigüedad_meses": 31,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C098",
+    "antigüedad_meses": 31,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 83.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C099",
+    "antigüedad_meses": 29,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C100",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C101",
+    "antigüedad_meses": 46,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C102",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.52,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C103",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 19.48,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C104",
+    "antigüedad_meses": 25,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 33.63,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C105",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.18,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C106",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.63,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C107",
+    "antigüedad_meses": 18,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C108",
+    "antigüedad_meses": 23,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C109",
+    "antigüedad_meses": 34,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 57.79,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C110",
+    "antigüedad_meses": 3,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C111",
+    "antigüedad_meses": 29,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.55,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C112",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C113",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 35.03,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C114",
+    "antigüedad_meses": 36,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.7,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C115",
+    "antigüedad_meses": 78,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 34.37,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C116",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C117",
+    "antigüedad_meses": 81,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 52.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C118",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C119",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C120",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.61,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C121",
+    "antigüedad_meses": 25,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 78.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C122",
+    "antigüedad_meses": 28,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C123",
+    "antigüedad_meses": 19,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 48.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C124",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.79,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C125",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 41.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C126",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 52.81,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C127",
+    "antigüedad_meses": 9,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 80.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C128",
+    "antigüedad_meses": 54,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 20.13,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C129",
+    "antigüedad_meses": 40,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 35.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C130",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 51.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C131",
+    "antigüedad_meses": 4,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 68.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C132",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C133",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C134",
+    "antigüedad_meses": 39,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.08,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C135",
+    "antigüedad_meses": 78,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.66,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C136",
+    "antigüedad_meses": 5,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C137",
+    "antigüedad_meses": 55,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.71,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C138",
+    "antigüedad_meses": 14,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.05,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C139",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C140",
+    "antigüedad_meses": 32,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 35.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C141",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C142",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C143",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 39.66,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C144",
+    "antigüedad_meses": 35,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 81.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C145",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 35.83,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C146",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 55.28,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C147",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C148",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 35.79,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C149",
+    "antigüedad_meses": 110,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.36,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C150",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C151",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C152",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 36.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C153",
+    "antigüedad_meses": 26,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C154",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 16.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C155",
+    "antigüedad_meses": 32,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 29.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C156",
+    "antigüedad_meses": 21,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C157",
+    "antigüedad_meses": 21,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 36.77,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C158",
+    "antigüedad_meses": 25,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C159",
+    "antigüedad_meses": 54,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 73.59,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C160",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 39.06,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C161",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.46,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C162",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 20.56,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C163",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.86,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C164",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 70.16,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C165",
+    "antigüedad_meses": 41,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 85.29,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C166",
+    "antigüedad_meses": 84,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 70.77,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C167",
+    "antigüedad_meses": 5,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.09,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C168",
+    "antigüedad_meses": 48,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C169",
+    "antigüedad_meses": 56,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 74.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C170",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.32,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C171",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.76,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C172",
+    "antigüedad_meses": 34,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.47,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C173",
+    "antigüedad_meses": 53,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 57.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C174",
+    "antigüedad_meses": 53,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.96,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C175",
+    "antigüedad_meses": 24,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 81.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C176",
+    "antigüedad_meses": 4,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 73.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C177",
+    "antigüedad_meses": 27,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C178",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.02,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C179",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.68,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C180",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 69.4,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C181",
+    "antigüedad_meses": 111,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.5,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C182",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.04,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C183",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.68,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C184",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 26.41,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C185",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C186",
+    "antigüedad_meses": 6,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 29.96,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C187",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 50.44,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C188",
+    "antigüedad_meses": 38,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C189",
+    "antigüedad_meses": 19,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C190",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 18.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C191",
+    "antigüedad_meses": 5,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 43.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C192",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 17.03,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C193",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.89,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C194",
+    "antigüedad_meses": 48,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 29.3,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C195",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 51.18,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C196",
+    "antigüedad_meses": 79,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 73.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C197",
+    "antigüedad_meses": 0,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 70.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C198",
+    "antigüedad_meses": 34,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 15.03,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C199",
+    "antigüedad_meses": 3,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 51.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C200",
+    "antigüedad_meses": 56,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.72,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C201",
+    "antigüedad_meses": 48,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.41,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C202",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 19.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C203",
+    "antigüedad_meses": 63,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 71.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C204",
+    "antigüedad_meses": 43,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 15.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C205",
+    "antigüedad_meses": 18,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.43,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C206",
+    "antigüedad_meses": 36,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C207",
+    "antigüedad_meses": 53,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.16,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C208",
+    "antigüedad_meses": 29,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 70.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C209",
+    "antigüedad_meses": 83,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 55.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C210",
+    "antigüedad_meses": 67,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 39.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C211",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C212",
+    "antigüedad_meses": 18,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 43.45,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C213",
+    "antigüedad_meses": 13,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 80.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C214",
+    "antigüedad_meses": 2,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 78.37,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C215",
+    "antigüedad_meses": 19,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C216",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.59,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C217",
+    "antigüedad_meses": 33,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C218",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.5,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C219",
+    "antigüedad_meses": 4,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 65.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C220",
+    "antigüedad_meses": 5,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C221",
+    "antigüedad_meses": 23,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 33.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C222",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.16,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C223",
+    "antigüedad_meses": 8,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.9,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C224",
+    "antigüedad_meses": 31,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.27,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C225",
+    "antigüedad_meses": 85,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C226",
+    "antigüedad_meses": 68,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C227",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 29.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C228",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.36,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C229",
+    "antigüedad_meses": 15,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 42.36,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C230",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 55.73,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C231",
+    "antigüedad_meses": 4,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 48.05,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C232",
+    "antigüedad_meses": 15,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 17.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C233",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 28.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C234",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 81.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C235",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 51.11,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C236",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 28.48,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C237",
+    "antigüedad_meses": 15,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 50.12,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C238",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C239",
+    "antigüedad_meses": 57,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C240",
+    "antigüedad_meses": 11,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.49,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C241",
+    "antigüedad_meses": 35,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C242",
+    "antigüedad_meses": 7,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 79.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C243",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.74,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C244",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 48.79,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C245",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.86,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C246",
+    "antigüedad_meses": 17,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.4,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C247",
+    "antigüedad_meses": 23,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 73.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C248",
+    "antigüedad_meses": 27,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 46.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C249",
+    "antigüedad_meses": 43,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 71.08,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C250",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.28,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C251",
+    "antigüedad_meses": 79,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C252",
+    "antigüedad_meses": 35,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 78.77,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C253",
+    "antigüedad_meses": 18,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C254",
+    "antigüedad_meses": 52,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 17.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C255",
+    "antigüedad_meses": 5,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 46.91,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C256",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 16.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C257",
+    "antigüedad_meses": 22,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C258",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 40.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C259",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C260",
+    "antigüedad_meses": 33,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 83.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C261",
+    "antigüedad_meses": 18,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C262",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C263",
+    "antigüedad_meses": 5,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 72.56,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C264",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 53.36,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C265",
+    "antigüedad_meses": 8,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C266",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 21.72,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C267",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.77,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C268",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C269",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.58,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C270",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C271",
+    "antigüedad_meses": 50,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C272",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C273",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 17.89,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C274",
+    "antigüedad_meses": 89,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.94,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C275",
+    "antigüedad_meses": 23,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 51.45,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C276",
+    "antigüedad_meses": 46,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.03,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C277",
+    "antigüedad_meses": 7,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.01,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C278",
+    "antigüedad_meses": 64,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.84,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C279",
+    "antigüedad_meses": 20,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C280",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.34,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C281",
+    "antigüedad_meses": 18,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 43.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C282",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C283",
+    "antigüedad_meses": 26,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C284",
+    "antigüedad_meses": 45,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 54.13,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C285",
+    "antigüedad_meses": 17,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 14.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C286",
+    "antigüedad_meses": 37,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 76.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C287",
+    "antigüedad_meses": 21,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 75.11,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C288",
+    "antigüedad_meses": 40,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.59,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C289",
+    "antigüedad_meses": 44,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.57,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C290",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 53.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C291",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C292",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.83,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C293",
+    "antigüedad_meses": 46,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 29.57,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C294",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 28.89,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C295",
+    "antigüedad_meses": 63,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 39.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C296",
+    "antigüedad_meses": 3,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.85,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C297",
+    "antigüedad_meses": 9,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 76.97,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C298",
+    "antigüedad_meses": 23,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 77.18,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C299",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 29.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C300",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 52.06,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C301",
+    "antigüedad_meses": 2,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 69.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C302",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.68,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C303",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C304",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.32,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C305",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C306",
+    "antigüedad_meses": 54,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.96,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C307",
+    "antigüedad_meses": 20,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 82.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C308",
+    "antigüedad_meses": 20,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 55.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C309",
+    "antigüedad_meses": 49,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.71,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C310",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C311",
+    "antigüedad_meses": 23,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 52.39,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C312",
+    "antigüedad_meses": 7,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.71,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C313",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 12.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C314",
+    "antigüedad_meses": 13,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 70.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C315",
+    "antigüedad_meses": 47,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C316",
+    "antigüedad_meses": 0,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 71.74,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C317",
+    "antigüedad_meses": 71,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 18.73,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C318",
+    "antigüedad_meses": 33,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.48,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C319",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.7,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C320",
+    "antigüedad_meses": 32,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 79.66,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C321",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 49.19,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C322",
+    "antigüedad_meses": 13,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 29.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C323",
+    "antigüedad_meses": 7,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C324",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.57,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C325",
+    "antigüedad_meses": 18,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.35,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C326",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 18.52,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C327",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C328",
+    "antigüedad_meses": 59,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C329",
+    "antigüedad_meses": 40,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C330",
+    "antigüedad_meses": 50,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.71,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C331",
+    "antigüedad_meses": 31,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C332",
+    "antigüedad_meses": 42,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.52,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C333",
+    "antigüedad_meses": 39,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 77.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C334",
+    "antigüedad_meses": 21,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C335",
+    "antigüedad_meses": 27,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.65,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C336",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.13,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C337",
+    "antigüedad_meses": 33,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.46,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C338",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.91,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C339",
+    "antigüedad_meses": 20,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.56,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C340",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 38.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C341",
+    "antigüedad_meses": 35,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 71.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C342",
+    "antigüedad_meses": 67,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 39.77,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C343",
+    "antigüedad_meses": 21,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 39.69,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C344",
+    "antigüedad_meses": 40,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 19.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C345",
+    "antigüedad_meses": 66,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 73.06,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C346",
+    "antigüedad_meses": 16,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 42.85,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C347",
+    "antigüedad_meses": 87,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 69.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C348",
+    "antigüedad_meses": 37,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.74,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C349",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.86,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C350",
+    "antigüedad_meses": 11,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.91,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C351",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C352",
+    "antigüedad_meses": 72,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 46.47,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C353",
+    "antigüedad_meses": 4,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.11,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C354",
+    "antigüedad_meses": 66,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 45.29,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C355",
+    "antigüedad_meses": 11,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 76.62,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C356",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.79,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C357",
+    "antigüedad_meses": 86,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C358",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.43,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C359",
+    "antigüedad_meses": 6,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 16.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C360",
+    "antigüedad_meses": 0,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 81.09,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C361",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.47,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C362",
+    "antigüedad_meses": 41,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C363",
+    "antigüedad_meses": 6,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 73.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C364",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.55,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C365",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 41.69,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C366",
+    "antigüedad_meses": 1,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 71.99,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C367",
+    "antigüedad_meses": 29,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 69.48,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C368",
+    "antigüedad_meses": 22,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 16.2,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C369",
+    "antigüedad_meses": 24,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C370",
+    "antigüedad_meses": 102,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.61,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C371",
+    "antigüedad_meses": 17,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C372",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C373",
+    "antigüedad_meses": 38,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.3,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C374",
+    "antigüedad_meses": 22,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.69,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C375",
+    "antigüedad_meses": 8,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 51.19,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C376",
+    "antigüedad_meses": 24,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.65,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C377",
+    "antigüedad_meses": 19,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.47,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C378",
+    "antigüedad_meses": 10,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.34,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C379",
+    "antigüedad_meses": 42,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 28.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C380",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 24.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C381",
+    "antigüedad_meses": 0,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 19.48,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C382",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C383",
+    "antigüedad_meses": 22,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 77.97,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C384",
+    "antigüedad_meses": 19,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 17.91,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C385",
+    "antigüedad_meses": 21,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.66,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C386",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C387",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 44.31,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C388",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C389",
+    "antigüedad_meses": 26,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 19.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C390",
+    "antigüedad_meses": 3,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.63,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C391",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 10.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C392",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.34,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C393",
+    "antigüedad_meses": 42,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C394",
+    "antigüedad_meses": 9,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 41.65,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C395",
+    "antigüedad_meses": 38,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C396",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 13.19,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C397",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 19.64,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C398",
+    "antigüedad_meses": 29,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.04,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C399",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 18.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C400",
+    "antigüedad_meses": 26,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.33,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C401",
+    "antigüedad_meses": 25,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 38.14,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C402",
+    "antigüedad_meses": 17,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 66.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C403",
+    "antigüedad_meses": 15,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 21.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C404",
+    "antigüedad_meses": 11,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 77.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C405",
+    "antigüedad_meses": 72,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.94,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C406",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 44.06,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C407",
+    "antigüedad_meses": 24,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C408",
+    "antigüedad_meses": 16,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 19.29,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C409",
+    "antigüedad_meses": 8,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 43.62,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C410",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.9,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C411",
+    "antigüedad_meses": 24,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 77.65,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C412",
+    "antigüedad_meses": 57,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.72,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C413",
+    "antigüedad_meses": 32,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 80.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C414",
+    "antigüedad_meses": 55,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 21.26,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C415",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 19.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C416",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C417",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C418",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 37.93,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C419",
+    "antigüedad_meses": 54,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.47,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C420",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 31.13,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C421",
+    "antigüedad_meses": 72,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 56.45,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C422",
+    "antigüedad_meses": 103,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 51.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C423",
+    "antigüedad_meses": 14,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.6,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C424",
+    "antigüedad_meses": 4,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 53.75,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C425",
+    "antigüedad_meses": 33,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C426",
+    "antigüedad_meses": 47,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.1,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C427",
+    "antigüedad_meses": 0,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 74.21,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C428",
+    "antigüedad_meses": 80,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 37.04,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C429",
+    "antigüedad_meses": 17,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.8,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C430",
+    "antigüedad_meses": 52,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 43.16,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C431",
+    "antigüedad_meses": 77,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 34.42,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C432",
+    "antigüedad_meses": 29,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C433",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.96,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C434",
+    "antigüedad_meses": 53,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C435",
+    "antigüedad_meses": 67,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.41,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C436",
+    "antigüedad_meses": 22,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.73,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C437",
+    "antigüedad_meses": 50,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 19.78,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C438",
+    "antigüedad_meses": 73,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.68,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C439",
+    "antigüedad_meses": 5,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 74.69,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C440",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C441",
+    "antigüedad_meses": 52,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C442",
+    "antigüedad_meses": 4,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 26.51,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C443",
+    "antigüedad_meses": 58,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.08,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C444",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.3,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C445",
+    "antigüedad_meses": 13,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.37,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C446",
+    "antigüedad_meses": 7,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 25.97,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C447",
+    "antigüedad_meses": 68,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.41,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C448",
+    "antigüedad_meses": 17,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 83.35,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C449",
+    "antigüedad_meses": 23,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.12,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C450",
+    "antigüedad_meses": 6,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.81,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C451",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 48.59,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C452",
+    "antigüedad_meses": 21,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 73.53,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C453",
+    "antigüedad_meses": 18,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 20.2,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C454",
+    "antigüedad_meses": 83,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 38.78,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C455",
+    "antigüedad_meses": 0,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.49,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C456",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.74,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C457",
+    "antigüedad_meses": 70,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 20.23,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C458",
+    "antigüedad_meses": 6,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 23.88,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C459",
+    "antigüedad_meses": 21,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.84,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C460",
+    "antigüedad_meses": 19,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 29.67,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C461",
+    "antigüedad_meses": 21,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 28.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C462",
+    "antigüedad_meses": 1,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 40.82,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C463",
+    "antigüedad_meses": 18,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 37.99,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C464",
+    "antigüedad_meses": 12,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C465",
+    "antigüedad_meses": 30,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.92,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C466",
+    "antigüedad_meses": 45,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 47.28,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C467",
+    "antigüedad_meses": 3,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 31.96,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C468",
+    "antigüedad_meses": 78,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 75.07,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C469",
+    "antigüedad_meses": 3,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 50.74,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C470",
+    "antigüedad_meses": 11,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 25.28,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C471",
+    "antigüedad_meses": 38,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 23.76,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C472",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 41.0,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C473",
+    "antigüedad_meses": 54,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 15.99,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C474",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 27.34,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C475",
+    "antigüedad_meses": 10,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 58.01,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C476",
+    "antigüedad_meses": 20,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 18.22,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C477",
+    "antigüedad_meses": 13,
+    "plan": "Premium",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 74.98,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C478",
+    "antigüedad_meses": 28,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.34,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C479",
+    "antigüedad_meses": 38,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 39.02,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C480",
+    "antigüedad_meses": 7,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 47.37,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C481",
+    "antigüedad_meses": 12,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.94,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C482",
+    "antigüedad_meses": 6,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 49.09,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C483",
+    "antigüedad_meses": 20,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 34.27,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C484",
+    "antigüedad_meses": 2,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.72,
+    "cancelado_si_no": "Sí"
+  },
+  {
+    "id_cliente": "C485",
+    "antigüedad_meses": 2,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 46.62,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C486",
+    "antigüedad_meses": 24,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 21.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C487",
+    "antigüedad_meses": 1,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 22.87,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C488",
+    "antigüedad_meses": 10,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 22.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C489",
+    "antigüedad_meses": 29,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 32.36,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C490",
+    "antigüedad_meses": 8,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 42.76,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C491",
+    "antigüedad_meses": 54,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.24,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C492",
+    "antigüedad_meses": 102,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 30.7,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C493",
+    "antigüedad_meses": 22,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.9,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C494",
+    "antigüedad_meses": 18,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 38.17,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C495",
+    "antigüedad_meses": 5,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 38.15,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C496",
+    "antigüedad_meses": 12,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 24.44,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C497",
+    "antigüedad_meses": 39,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 26.54,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C498",
+    "antigüedad_meses": 11,
+    "plan": "Estándar",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 45.44,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C499",
+    "antigüedad_meses": 28,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "Sí",
+    "costo_mensual": 19.95,
+    "cancelado_si_no": "No"
+  },
+  {
+    "id_cliente": "C500",
+    "antigüedad_meses": 9,
+    "plan": "Básico",
+    "soporte_tecnico_usado": "No",
+    "costo_mensual": 27.69,
+    "cancelado_si_no": "No"
+  }
+];
+
+  const rangosAntiguedad = {
+    "0-6": [0, 6],
+    "7-12": [7, 12],
+    "13-24": [13, 24],
+    "25-48": [25, 48],
+    "49-120": [49, 120]
+  };
+  const rangosCosto = {
+    "0-30": [0, 30],
+    "31-50": [31, 50],
+    "51-70": [51, 70],
+    "71-200": [71, 200]
+  };
+
+  let tabla = null;
+
+  function obtenerFiltros(){
+    return {
+      plan: document.getElementById("filtro-plan").value,
+      soporte: document.getElementById("filtro-soporte").value,
+      antiguedad: document.getElementById("filtro-antiguedad").value,
+      costo: document.getElementById("filtro-costo").value
+    };
+  }
+
+  function filtrarDatos(){
+    const f = obtenerFiltros();
+    return datos.filter(d => {
+      if (f.plan !== "Todos" && d.plan !== f.plan) return false;
+      if (f.soporte !== "Todos" && d.soporte_tecnico_usado !== f.soporte) return false;
+      if (f.antiguedad !== "Todas"){
+        const [a,b] = rangosAntiguedad[f.antiguedad];
+        if (d.antigüedad_meses < a || d.antigüedad_meses > b) return false;
+      }
+      if (f.costo !== "Todas"){
+        const [a,b] = rangosCosto[f.costo];
+        if (d.costo_mensual < a || d.costo_mensual > b) return false;
+      }
+      return true;
+    });
+  }
+
+  function tasaChurn(subset){
+    if (!subset.length) return 0;
+    const c = subset.filter(d => d.cancelado_si_no === "Sí").length;
+    return (c / subset.length * 100);
+  }
+
+  function actualizarKPIs(subset){
+    const total = subset.length;
+    const canc = subset.filter(d => d.cancelado_si_no === "Sí").length;
+    const act = total - canc;
+    const tasa = tasaChurn(subset);
+    const promAnt = total ? (subset.reduce((s,d)=>s+d.antigüedad_meses,0)/total).toFixed(1) : 0;
+    const promCos = total ? (subset.reduce((s,d)=>s+d.costo_mensual,0)/total).toFixed(2) : 0;
+
+    document.getElementById("badge-filas").textContent = total + " filas";
+    document.querySelector(".kpi-card:nth-child(2) .valor").textContent = canc;
+    document.querySelector(".kpi-card:nth-child(2) .sub").innerHTML = "Tasa de churn: <b>" + tasa.toFixed(1) + "%</b>";
+    document.querySelector(".kpi-card:nth-child(3) .valor").textContent = act;
+    document.querySelector(".kpi-card:nth-child(4) .valor").textContent = promAnt + " meses";
+    document.querySelector(".kpi-card:nth-child(5) .valor").textContent = promCos;
+  }
+
+  function agruparTasa(subset, clave, orden){
+    const grupos = [...new Set(subset.map(d => d[clave]))].sort((a,b)=>{
+      if (orden) return orden.indexOf(a) - orden.indexOf(b);
+      return a - b;
+    });
+    const tasas = grupos.map(g => {
+      const sub = subset.filter(d => d[clave] === g);
+      const c = sub.filter(d => d.cancelado_si_no === "Sí").length;
+      return (c / sub.length * 100).toFixed(1);
+    });
+    return {x: grupos, y: tasas};
+  }
+
+  const layoutBase = {
+    margin: {t: 40, b: 40, l: 60, r: 20},
+    font: {family: "Segoe UI, sans-serif", size: 12, color: "#3a4a5a"},
+    plot_bgcolor: "#ffffff",
+    paper_bgcolor: "#ffffff",
+    xaxis: {tickangle: 0},
+    yaxis: {rangemode: "tozero", ticksuffix: "%"}
+  };
+
+  function dibujarGraficos(subset){
+    // 1. Churn por plan
+    const p1 = agruparTasa(subset, "plan", ["Básico", "Estándar", "Premium"]);
+    Plotly.newPlot("g-plan", [{
+      x: p1.x, y: p1.y, type: "bar",
+      marker: {color: ["#ef553b", "#ef553b", "#ef553b"]},
+      text: p1.y.map(v => v + "%"), textposition: "auto"
+    }], {...layoutBase, title: {text: "Tasa de Churn por Plan (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p1.y, 10) * 1.25]}});
+
+    // 2. Churn por soporte
+    const p2 = agruparTasa(subset, "soporte_tecnico_usado", ["No", "Sí"]);
+    Plotly.newPlot("g-soporte", [{
+      x: p2.x, y: p2.y, type: "bar",
+      marker: {color: ["#00cc96", "#ef553b"]},
+      text: p2.y.map(v => v + "%"), textposition: "auto"
+    }], {...layoutBase, title: {text: "Tasa de Churn por Soporte Técnico (%)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p2.y, 10) * 1.25]}});
+
+    // 3. Churn por antigüedad
+    const p3 = agruparTasa(subset, "antigüedad_rango_calc", ["0-6", "7-12", "13-24", "25-48", "49+"]);
+    Plotly.newPlot("g-antiguedad", [{
+      x: p3.x, y: p3.y, type: "bar",
+      marker: {color: "#ef553b"},
+      text: p3.y.map(v => v + "%"), textposition: "auto"
+    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Antigüedad (meses)", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p3.y, 10) * 1.25]}});
+
+    // 4. Churn por costo
+    const p4 = agruparTasa(subset, "costo_rango_calc", ["0-30", "31-50", "51-70", "71+"]);
+    Plotly.newPlot("g-costo", [{
+      x: p4.x, y: p4.y, type: "bar",
+      marker: {color: "#636efa"},
+      text: p4.y.map(v => v + "%"), textposition: "auto"
+    }], {...layoutBase, title: {text: "Tasa de Churn por Rango de Costo Mensual", x: 0.5}, yaxis: {ticksuffix: "%", range: [0, Math.max(...p4.y, 10) * 1.25]}});
+
+    // 5. Scatter antigüedad vs costo
+    const no = subset.filter(d => d.cancelado_si_no === "No");
+    const si = subset.filter(d => d.cancelado_si_no === "Sí");
+    Plotly.newPlot("g-scatter", [
+      {x: no.map(d=>d.antigüedad_meses), y: no.map(d=>d.costo_mensual), mode: "markers", type: "scatter", name: "No canceló", marker: {color: "#00cc96", size: 8, opacity: 0.7}},
+      {x: si.map(d=>d.antigüedad_meses), y: si.map(d=>d.costo_mensual), mode: "markers", type: "scatter", name: "Canceló", marker: {color: "#ef553b", size: 8, opacity: 0.85, symbol: "x"}}
+    ], {...layoutBase, title: {text: "Antigüedad vs Costo Mensual", x: 0.5}, xaxis: {title: "Antigüedad (meses)"}, yaxis: {title: "Costo mensual"}});
+
+    // 6. Histograma costo por churn
+    const histNo = no.map(d => d.costo_mensual);
+    const histSi = si.map(d => d.costo_mensual);
+    Plotly.newPlot("g-hist", [
+      {x: histNo, type: "histogram", name: "No canceló", marker: {color: "#00cc96"}, opacity: 0.7, nbinsx: 20},
+      {x: histSi, type: "histogram", name: "Canceló", marker: {color: "#ef553b"}, opacity: 0.85, nbinsx: 20}
+    ], {...layoutBase, title: {text: "Distribución de Costo Mensual por Estado de Churn", x: 0.5}, barmode: "overlay", xaxis: {title: "Costo mensual"}, yaxis: {title: "Frecuencia"}});
+  }
+
+  function actualizarTabla(subset){
+    if (!tabla){
+      tabla = $("#tabla-clientes").DataTable({
+        data: subset,
+        columns: [
+          {data: "id_cliente"},
+          {data: "antigüedad_meses"},
+          {data: "plan"},
+          {data: "soporte_tecnico_usado"},
+          {data: "costo_mensual", render: $.fn.dataTable.render.number('.', ',', 2, '')},
+          {data: "cancelado_si_no", render: function(d, type, row){
+            return d === "Sí" ? '<span style="color:#ef553b; font-weight:600;">Sí</span>' : '<span style="color:#00cc96; font-weight:600;">No</span>';
+          }}
+        ],
+        pageLength: 10,
+        responsive: true,
+        language: {
+          url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+        }
+      });
+    } else {
+      tabla.clear().rows.add(subset).draw();
+    }
+  }
+
+  // Rangos de antigüedad/costo para agrupación (calculados en JS para filtrado)
+  function clasificarAntiguedad(v){
+    if (v <= 6) return "0-6";
+    if (v <= 12) return "7-12";
+    if (v <= 24) return "13-24";
+    if (v <= 48) return "25-48";
+    return "49+";
+  }
+  function clasificarCosto(v){
+    if (v <= 30) return "0-30";
+    if (v <= 50) return "31-50";
+    if (v <= 70) return "51-70";
+    return "71+";
+  }
+
+  function actualizarDashboard(){
+    const subset = filtrarDatos();
+    // Añadir columnas de rango para agrupación
+    const subsetConRangos = subset.map(d => ({
+      ...d,
+      antigüedad_rango_calc: clasificarAntiguedad(d.antigüedad_meses),
+      costo_rango_calc: clasificarCosto(d.costo_mensual)
+    }));
+    actualizarKPIs(subset);
+    dibujarGraficos(subsetConRangos);
+    actualizarTabla(subset);
+  }
+
+  // Eventos de filtros
+  document.getElementById("filtro-plan").addEventListener("change", actualizarDashboard);
+  document.getElementById("filtro-soporte").addEventListener("change", actualizarDashboard);
+  document.getElementById("filtro-antiguedad").addEventListener("change", actualizarDashboard);
+  document.getElementById("filtro-costo").addEventListener("change", actualizarDashboard);
+
+  // Inicializar
+  window.addEventListener("DOMContentLoaded", actualizarDashboard);
+</script>
+
+</body>
+</html>

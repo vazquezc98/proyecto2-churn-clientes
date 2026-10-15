@@ -1,0 +1,12 @@
+,id_cliente,antigüedad_meses,plan,soporte_tecnico_usado,costo_mensual,cancelado_si_no,antigüedad_rango,costo_rango
+count,500,500.0,500,500,500.0,500,500,500
+unique,500,,3,2,,2,5,4
+top,C001,,Básico,No,,No,0-6,0-30
+freq,1,,238,332,,471,132,202
+mean,,23.618,,,39.97966,,,
+std,,23.36818821476928,,,18.055781228069634,,,
+min,,0.0,,,10.64,,,
+25%,,6.0,,,25.15,,,
+50%,,17.0,,,37.870000000000005,,,
+75%,,33.25,,,48.625,,,
+max,,118.0,,,87.46,,,
